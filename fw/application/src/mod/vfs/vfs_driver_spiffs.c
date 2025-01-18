@@ -1,4 +1,8 @@
-#include "vfs_driver_spiffs.h"
+#include "boards.h"
+
+#ifdef VFS_SPIFFS_ENABLE
+
+#include "vfs_driver_fs.h"
 
 #include "hal_spi_flash.h"
 
@@ -43,6 +47,31 @@ static s32_t vfs_spiffs_map_error_code(s32_t err) {
         }
     }
     return VFS_ERR_FAIL;
+}
+
+static int32_t vfs_check_file_path(const char *file_path) {
+    if (strlen(file_path) >= VFS_MAX_PATH_LEN) {
+        return VFS_ERR_MAXNM;
+    }
+    const char *basename;
+    size_t length;
+    cwk_path_get_basename(file_path, &basename, &length);
+    if (length <= 0 || length >= VFS_MAX_NAME_LEN) {
+        return VFS_ERR_MAXNM;
+    }
+    return VFS_OK;
+}
+
+static int32_t vfs_check_folder_path(const char *file_path) {
+    int32_t ret = vfs_check_file_path(file_path);
+    if (ret != VFS_OK) {
+        return ret;
+    }
+    if (strlen(file_path) + strlen(VFS_SPIFFS_FOLDER_NAME) + 1 >= VFS_MAX_PATH_LEN) {
+        return VFS_ERR_MAXNM;
+    }
+
+    return VFS_OK;
 }
 
 static s32_t spiffs_block_read(u32_t addr, u32_t size, u8_t *dst) { return hal_spi_flash_read(addr, dst, size); }
@@ -142,6 +171,11 @@ int32_t vfs_spiffs_stat_file(const char *file, vfs_obj_t *obj) {
     size_t length;
     char path[SPIFFS_OBJ_NAME_LEN];
     memset(obj, 0, sizeof(vfs_obj_t));
+
+    int res = vfs_check_file_path(file);
+    if (res != VFS_OK) {
+        return res;
+    }
 
     if (SPIFFS_stat(&fs, file, &s) == SPIFFS_OK) {
         cwk_path_get_basename(s.name, &basename, &length);
@@ -272,9 +306,16 @@ int32_t vfs_spiffs_close_dir(vfs_dir_t *fd) {
 int32_t vfs_spiffs_create_dir(const char *dir) {
     char path[VFS_MAX_PATH_LEN];
 
-    NRF_LOG_INFO("create dir %s\n", nrf_log_push(dir));
+    NRF_LOG_INFO("create dir %s, %d\n", nrf_log_push(dir), strlen(dir));
+    int res = vfs_check_folder_path(dir);
+    if (res != VFS_OK) {
+        NRF_LOG_INFO("folder path check failed: %d", res);
+        return res;
+    }
+
     snprintf(path, sizeof(path), "%s/%s", dir, VFS_SPIFFS_FOLDER_NAME);
-    int res = SPIFFS_creat(&fs, path, 0);
+
+    res = SPIFFS_creat(&fs, path, 0);
     return vfs_spiffs_map_error_code(res);
 }
 
@@ -313,6 +354,16 @@ int32_t vfs_spiffs_rename_dir_internal(const char *dir_name, const char *new_dir
     vfs_spiffs_dir_t dir;
     vfs_spiffs_dir_t *p_dir = &dir;
     int32_t err_code = VFS_OK;
+
+    int ret = vfs_check_folder_path(dir_name);
+    if (ret != VFS_OK) {
+        return ret;
+    }
+
+    int ret2 = vfs_check_folder_path(new_dir_name);
+    if (ret2 != VFS_OK) {
+        return ret;
+    }
 
     p_dir->pe = &p_dir->e;
     cwalk_dir_prefix_match(p_dir->dir, dir_name);
@@ -364,6 +415,10 @@ int32_t vfs_spiffs_rename_dir(const char *dir_name, const char *new_dir_name) {
 
 /**file operations*/
 int32_t vfs_spiffs_open_file(const char *file, vfs_file_t *fd, uint32_t flags) {
+    int ret = vfs_check_file_path(file);
+    if (ret != VFS_OK) {
+        return ret;
+    }
     fd->handle = SPIFFS_open(&fs, file, flags, 0);
     if (fd->handle < 0) {
         return vfs_spiffs_map_error_code(fd->handle);
@@ -427,11 +482,20 @@ int32_t vfs_spiffs_update_file_meta(const char *file, void *meta, size_t meta_si
 int32_t vfs_spiffs_write_file_data(const char *file, void *buff, size_t buff_size) {
 
     NRF_LOG_INFO("write file data %s\n", nrf_log_push(file));
+
+    int ret = vfs_check_file_path(file);
+    if (ret != VFS_OK) {
+        return ret;
+    }
+
     spiffs_file fd = SPIFFS_open(&fs, file, SPIFFS_WRONLY | SPIFFS_CREAT | SPIFFS_TRUNC, 0);
     if (fd < 0) {
         return vfs_spiffs_map_error_code(fd);
     }
-    int res = SPIFFS_write(&fs, fd, buff, buff_size);
+    int res = VFS_OK;
+    if (buff != NULL && buff_size > 0) {
+        res = SPIFFS_write(&fs, fd, buff, buff_size);
+    }
     SPIFFS_close(&fs, fd);
     if (res > 0) {
         return res;
@@ -455,10 +519,16 @@ int32_t vfs_spiffs_read_file_data(const char *file, void *buff, size_t buff_size
 }
 
 int32_t vfs_spiffs_rename_file(const char *file, const char *new_file) {
-    if (strlen(new_file) >= SPIFFS_OBJ_NAME_LEN) {
-        NRF_LOG_INFO("rename file error, file %s new file %s is too long");
-        return VFS_ERR_MAXNM;
+    int32_t ret = vfs_check_file_path(file);
+    if (ret != VFS_OK) {
+        return ret;
     }
+
+    ret = vfs_check_file_path(new_file);
+    if (ret != VFS_OK) {
+        return ret;
+    }
+
     NRF_LOG_INFO("rename file %s => %s\n", nrf_log_push(file), nrf_log_push(new_file));
     int res = SPIFFS_rename(&fs, file, new_file);
     return vfs_spiffs_map_error_code(res);
@@ -470,29 +540,30 @@ int32_t vfs_spiffs_remove_file(const char *file) {
 }
 
 // TODO
-const vfs_driver_t vfs_driver_spiffs = {.mount = vfs_spiffs_mount,
-                                        .umount = vfs_spiffs_umount,
-                                        .format = vfs_spiffs_format,
-                                        .mounted = vfs_spiffs_mounted,
-                                        .stat = vfs_spiffs_stat,
+const vfs_driver_t vfs_driver_fs = {.mount = vfs_spiffs_mount,
+                                    .umount = vfs_spiffs_umount,
+                                    .format = vfs_spiffs_format,
+                                    .mounted = vfs_spiffs_mounted,
+                                    .stat = vfs_spiffs_stat,
 
-                                        .stat_file = vfs_spiffs_stat_file,
+                                    .stat_file = vfs_spiffs_stat_file,
 
-                                        .open_dir = vfs_spiffs_open_dir,
-                                        .read_dir = vfs_spiffs_read_dir,
-                                        .close_dir = vfs_spiffs_close_dir,
-                                        .create_dir = vfs_spiffs_create_dir,
-                                        .remove_dir = vfs_spiffs_remove_dir,
-                                        .rename_dir = vfs_spiffs_rename_dir,
+                                    .open_dir = vfs_spiffs_open_dir,
+                                    .read_dir = vfs_spiffs_read_dir,
+                                    .close_dir = vfs_spiffs_close_dir,
+                                    .create_dir = vfs_spiffs_create_dir,
+                                    .remove_dir = vfs_spiffs_remove_dir,
+                                    .rename_dir = vfs_spiffs_rename_dir,
 
-                                        .open_file = vfs_spiffs_open_file,
-                                        .close_file = vfs_spiffs_close_file,
-                                        .read_file = vfs_spiffs_read_file,
-                                        .write_file = vfs_spiffs_write_file,
-                                        .update_file_meta = vfs_spiffs_update_file_meta,
+                                    .open_file = vfs_spiffs_open_file,
+                                    .close_file = vfs_spiffs_close_file,
+                                    .read_file = vfs_spiffs_read_file,
+                                    .write_file = vfs_spiffs_write_file,
+                                    .update_file_meta = vfs_spiffs_update_file_meta,
 
-                                        .write_file_data = vfs_spiffs_write_file_data,
-                                        .read_file_data = vfs_spiffs_read_file_data,
+                                    .write_file_data = vfs_spiffs_write_file_data,
+                                    .read_file_data = vfs_spiffs_read_file_data,
 
-                                        .rename_file = vfs_spiffs_rename_file,
-                                        .remove_file = vfs_spiffs_remove_file};
+                                    .rename_file = vfs_spiffs_rename_file,
+                                    .remove_file = vfs_spiffs_remove_file};
+#endif

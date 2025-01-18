@@ -14,6 +14,7 @@
 #include "settings.h"
 
 #include "amiibo_helper.h"
+#include "i18n/language.h"
 
 static void app_amiibo_on_run(mini_app_inst_t *p_app_inst);
 static void app_amiibo_on_kill(mini_app_inst_t *p_app_inst);
@@ -45,6 +46,9 @@ void app_amiibo_on_run(mini_app_inst_t *p_app_inst) {
     p_app_handle->p_msg_box = mui_msg_box_create();
     mui_msg_box_set_user_data(p_app_handle->p_msg_box, p_app_handle);
 
+    p_app_handle->p_toast_view = mui_toast_view_create();
+    mui_toast_view_set_user_data(p_app_handle->p_toast_view, p_app_handle);
+
     p_app_handle->p_scene_dispatcher = mui_scene_dispatcher_create();
 
     string_init(p_app_handle->current_file);
@@ -53,7 +57,7 @@ void app_amiibo_on_run(mini_app_inst_t *p_app_inst) {
 
     mui_scene_dispatcher_set_user_data(p_app_handle->p_scene_dispatcher, p_app_handle);
     mui_scene_dispatcher_set_scene_defines(p_app_handle->p_scene_dispatcher, amiibo_scene_defines, AMIIBO_SCENE_MAX);
-    mui_mui_scene_dispatcher_set_default_scene_id(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_STORAGE_LIST);
+    mui_mui_scene_dispatcher_set_default_scene_id(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER);
 
     mui_view_dispatcher_add_view(p_app_handle->p_view_dispatcher, AMIIBO_VIEW_ID_LIST,
                                  mui_list_view_get_view(p_app_handle->p_list_view));
@@ -65,6 +69,15 @@ void app_amiibo_on_run(mini_app_inst_t *p_app_inst) {
                                  mui_msg_box_get_view(p_app_handle->p_msg_box));
 
     mui_view_dispatcher_attach(p_app_handle->p_view_dispatcher, MUI_LAYER_FULLSCREEN);
+
+    p_app_handle->p_view_dispatcher_toast = mui_view_dispatcher_create();
+    mui_view_dispatcher_add_view(p_app_handle->p_view_dispatcher_toast, AMIIBO_VIEW_ID_TOAST,
+                                 mui_toast_view_get_view(p_app_handle->p_toast_view));
+    mui_view_dispatcher_attach(p_app_handle->p_view_dispatcher_toast, MUI_LAYER_TOAST);
+    mui_view_dispatcher_switch_to_view(p_app_handle->p_view_dispatcher_toast, AMIIBO_VIEW_ID_TOAST);
+
+    extern const ntag_t default_ntag215;
+    APP_ERROR_CHECK(ntag_emu_init(&default_ntag215));
 
     settings_data_t *p_settings = settings_get_data();
 
@@ -82,32 +95,31 @@ void app_amiibo_on_run(mini_app_inst_t *p_app_inst) {
             }
 
             if (p_cache_data->current_scene_id == AMIIBO_SCENE_AMIIBO_DETAIL) {
-                p_app_handle->reload_amiibo_files = true;
-                mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_AMIIBO_DETAIL);
+                if (string_size(p_app_handle->current_file) > 0) {
+                    p_app_handle->reload_amiibo_files = true;
+                    mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_AMIIBO_DETAIL);
+                } else {
+                    mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER);
+                }
             } else if (p_cache_data->current_scene_id == AMIIBO_SCENE_FILE_BROWSER) {
                 mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER);
-            } else {
-                mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_STORAGE_LIST);
             }
             return;
         }
     }
 
-    if (p_settings->skip_driver_select) {
-        p_app_handle->current_drive = vfs_get_default_drive();
-        string_set_str(p_app_handle->current_folder, "/");
-        app_amiibo_try_mount_drive(p_app_handle);
-        mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER);
-    } else {
-        mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_STORAGE_LIST);
-    }
+    p_app_handle->current_drive = vfs_get_default_drive();
+    string_set_str(p_app_handle->current_folder, "/");
+    app_amiibo_try_mount_drive(p_app_handle);
+    mui_scene_dispatcher_next_scene(p_app_handle->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER);
 }
 
 void app_amiibo_on_kill(mini_app_inst_t *p_app_inst) {
     app_amiibo_t *p_app_handle = p_app_inst->p_handle;
 
     uint32_t current_scene_id = mui_scene_dispatcher_current_scene(p_app_handle->p_scene_dispatcher);
-    if (app_amiibo_info.hibernate_enabled && (current_scene_id == AMIIBO_SCENE_AMIIBO_DETAIL || current_scene_id == AMIIBO_SCENE_FILE_BROWSER)) {
+    if (app_amiibo_info.hibernate_enabled &&
+        (current_scene_id == AMIIBO_SCENE_AMIIBO_DETAIL || current_scene_id == AMIIBO_SCENE_FILE_BROWSER)) {
         app_amiibo_cache_data_t p_cache_data = {0};
         p_cache_data.cached_enabled = true;
         strcpy(p_cache_data.current_file, string_get_cstr(p_app_handle->current_file));
@@ -130,6 +142,10 @@ void app_amiibo_on_kill(mini_app_inst_t *p_app_inst) {
     mui_scene_dispatcher_free(p_app_handle->p_scene_dispatcher);
     amiibo_detail_view_free(p_app_handle->p_amiibo_detail_view);
 
+    mui_view_dispatcher_detach(p_app_handle->p_view_dispatcher_toast, MUI_LAYER_TOAST);
+    mui_view_dispatcher_free(p_app_handle->p_view_dispatcher_toast);
+    mui_toast_view_free(p_app_handle->p_toast_view);
+
     string_clear(p_app_handle->current_file);
     string_clear(p_app_handle->current_folder);
     string_array_clear(p_app_handle->amiibo_files);
@@ -141,12 +157,14 @@ void app_amiibo_on_kill(mini_app_inst_t *p_app_inst) {
 
 void app_amiibo_on_event(mini_app_inst_t *p_app_inst, mini_app_event_t *p_event) {}
 
-const mini_app_t app_amiibo_info = {.id = MINI_APP_ID_AMIIBO,
-                                    .name = "Amiibo模拟器",
-                                    .icon = 0xe082,
-                                    .sys = false,
-                                    .deamon = false,
-                                    .hibernate_enabled = true,
-                                    .run_cb = app_amiibo_on_run,
-                                    .kill_cb = app_amiibo_on_kill,
-                                    .on_event_cb = app_amiibo_on_event};
+mini_app_t app_amiibo_info = {.id = MINI_APP_ID_AMIIBO,
+                              .name = "Amiibo模拟器",
+                              .name_i18n_key = _L_APP_AMIIBO,
+                              .icon = 0xe082,
+                              .sys = false,
+                              .deamon = false,
+                              .hibernate_enabled = true,
+                              .icon_32x32 = &app_amiibo_emulator_32x32,
+                              .run_cb = app_amiibo_on_run,
+                              .kill_cb = app_amiibo_on_kill,
+                              .on_event_cb = app_amiibo_on_event};

@@ -4,33 +4,48 @@
 #include "vfs.h"
 #include "vfs_meta.h"
 
+#include "tag_helper.h"
+
 #define SETTINGS_FILE_NAME "/settings.bin"
 
-settings_data_t m_settings_data = {.backlight = 0,
-                                   .auto_gen_amiibo = 0,
-                                   .auto_gen_amiibolink = 0,
-                                   .sleep_timeout_sec = 30,
-                                   .skip_driver_select = 0,
-                                   .bat_mode = 0,
-                                   .amiibo_link_ver = BLE_AMIIBOLINK_VER_V1,
-                                   .hibernate_enabled = false,
-                                   .show_mem_usage = false};
+#ifdef OLED_SCREEN
+// Though OLED doesn't necessarily imply rechargeable battery, it's usually the case.
+#define DEFAULT_BAT_MODE 1
+#else // !OLED_SCREEN
+#define DEFAULT_BAT_MODE 0
+#endif // OLED_SCREEN
 
-static vfs_driver_t *get_enabled_vfs_driver() {
-    if (vfs_drive_enabled(VFS_DRIVE_EXT)) {
-        return vfs_get_driver(VFS_DRIVE_EXT);
-    } else if (vfs_drive_enabled(VFS_DRIVE_INT)) {
-        return vfs_get_driver(VFS_DRIVE_INT);
+const settings_data_t def_settings_data = {.backlight = 0,
+                                           .oled_contrast = 40,
+                                           .auto_gen_amiibo = 0,
+                                           .auto_gen_amiibolink = 0,
+                                           .sleep_timeout_sec = 30,
+                                           .skip_driver_select = 0,
+                                           .bat_mode = DEFAULT_BAT_MODE,
+                                           .amiibo_link_ver = BLE_AMIIBOLINK_VER_V1,
+                                           .language = LANGUAGE_EN_US,
+                                           .hibernate_enabled = false,
+                                           .show_mem_usage = false,
+                                           .lcd_backlight = 0,
+                                           .oled_contrast = 80,
+                                           .anim_enabled = false,
+                                           .amiidb_data_slot_num = 20,
+                                           .qrcode_enabled = true,
+                                           .chameleon_default_slot_index = INVALID_SLOT_INDEX};
+
+settings_data_t m_settings_data = {0};
+
+#define BOOL_VALIDATE(expr, default_val)                                                                               \
+    if ((expr) != 0 && (expr) != 1) {                                                                                  \
+        (expr) = (default_val);                                                                                        \
+    }
+#define INT8_VALIDATE(expr, min, max, default_val)                                                                     \
+    if ((expr) < (min) || (expr) > (max)) {                                                                            \
+        (expr) = (default_val);                                                                                        \
     }
 
-    return NULL;
-}
-
-#define BOOL_VALIDATE(expr, default_val) if((expr) != 0 && (expr) !=1) { (expr) = (default_val);}
-#define INT8_VALIDATE(expr, min, max, default_val) if((expr) < (min) || (expr) > (max)) { (expr) = (default_val);}
-
 static void validate_settings() {
-    if (m_settings_data.sleep_timeout_sec == 0 || m_settings_data.sleep_timeout_sec > 180) {
+    if (m_settings_data.sleep_timeout_sec > 180) {
         m_settings_data.sleep_timeout_sec = 30;
     }
 
@@ -48,10 +63,17 @@ static void validate_settings() {
     BOOL_VALIDATE(m_settings_data.auto_gen_amiibolink, 0);
     BOOL_VALIDATE(m_settings_data.backlight, 0);
     INT8_VALIDATE(m_settings_data.lcd_backlight, 0, 100, 0);
+    INT8_VALIDATE(m_settings_data.oled_contrast, 0, 100, 80);
+    BOOL_VALIDATE(m_settings_data.anim_enabled, 0);
+    BOOL_VALIDATE(m_settings_data.qrcode_enabled, 0);
+    INT8_VALIDATE(m_settings_data.language, 0, LANGUAGE_COUNT - 1, LANGUAGE_EN_US);
+    INT8_VALIDATE(m_settings_data.amiidb_data_slot_num, 1, 100, 20);
+    INT8_VALIDATE(m_settings_data.chameleon_default_slot_index, 0, TAG_MAX_SLOT_NUM, INVALID_SLOT_INDEX);
 }
 
 int32_t settings_init() {
-    vfs_driver_t *p_driver = get_enabled_vfs_driver();
+    memcpy(&m_settings_data, &def_settings_data, sizeof(settings_data_t));
+    vfs_driver_t *p_driver = vfs_get_default_driver();
     if (p_driver == NULL) {
         return NRF_ERROR_NOT_SUPPORTED;
     }
@@ -76,7 +98,7 @@ int32_t settings_init() {
 }
 
 int32_t settings_save() {
-    vfs_driver_t *p_driver = get_enabled_vfs_driver();
+    vfs_driver_t *p_driver = vfs_get_default_driver();
     int32_t err;
 
     if (p_driver == NULL) {
@@ -118,3 +140,9 @@ int32_t settings_save() {
 }
 
 settings_data_t *settings_get_data() { return &m_settings_data; }
+
+int32_t settings_reset() {
+    memcpy(&m_settings_data, &def_settings_data, sizeof(settings_data_t));
+    vfs_driver_t *p_driver = vfs_get_default_driver();
+    return p_driver->remove_file(SETTINGS_FILE_NAME);
+}

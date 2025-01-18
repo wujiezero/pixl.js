@@ -4,10 +4,13 @@
 #include "nrf_pwr_mgmt.h"
 #include "settings.h"
 #include "settings_scene.h"
-#include "utils.h"
+#include "utils2.h"
 #include "version2.h"
 
 #include "mui_u8g2.h"
+#include "i18n/language.h"
+
+#ifdef LCD_SCREEN
 
 static void settings_scene_lcd_backlight_event_cb(mui_progress_bar_event_t event, mui_progress_bar_t *p_progress_bar) {
     app_settings_t *app = p_progress_bar->user_data;
@@ -26,7 +29,7 @@ static void settings_scene_lcd_backlight_event_cb(mui_progress_bar_event_t event
 void settings_scene_lcd_backlight_on_enter(void *user_data) {
     app_settings_t *app = user_data;
     settings_data_t *p_settings = settings_get_data();
-    mui_progress_bar_set_header(app->p_progress_bar, "背光亮度");
+    mui_progress_bar_set_header(app->p_progress_bar, getLangString(_L_APP_SET_LCD_BACKLIGHT_TITLE));
     mui_progress_bar_set_min_value(app->p_progress_bar, 0);
     mui_progress_bar_set_max_value(app->p_progress_bar, 100);
     mui_progress_bar_set_current_value(app->p_progress_bar, p_settings->lcd_backlight);
@@ -38,3 +41,5 @@ void settings_scene_lcd_backlight_on_exit(void *user_data) {
     app_settings_t *app = user_data;
     mui_progress_bar_reset(app->p_progress_bar);
 }
+
+#endif

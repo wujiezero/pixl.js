@@ -1,6 +1,7 @@
 #include "mini_app_defines.h"
 #include "mini_app_registry.h"
 #include <stddef.h>
+#include "i18n/language.h"
 
 extern const mini_app_t* mini_app_registry[];
 extern const uint32_t mini_app_num;

@@ -2,15 +2,9 @@
 #define MUI_DEFINES_H
 
 
-// mlib defines 
-#include "mui_conf.h"
-#include "mui_mlib.h"
-
-
 #define MUI_EVENT_ID_REDRAW 0
 #define MUI_EVENT_ID_INPUT 1
-#define MUI_EVENT_ID_VIEW_ENTER 2
-#define MUI_EVENT_ID VIEW_EXIT 3
+#define MUI_EVENT_ID_ANIM 2
 
 
 // #ifndef MAX

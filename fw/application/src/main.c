@@ -74,8 +74,6 @@
 
 #include "ntag_store.h"
 
-#include "amiibo_data.h"
-
 #include "bat.h"
 #include "ble_main.h"
 
@@ -94,7 +92,10 @@
 #include "hal_spi_bus.h"
 #include "hal_spi_flash.h"
 
+#include "tag_helper.h"
+
 #include "cache.h"
+#include "i18n/language.h"
 #include "settings.h"
 
 #define APP_SCHED_MAX_EVENT_SIZE 4 /**< Maximum size of scheduler events. */
@@ -104,6 +105,8 @@
 #define BTN_ACTION_KEY1_LONGPUSH BSP_EVENT_KEY_LAST + 9
 
 #define APP_SHUTDOWN_HANDLER_PRIORITY 1
+
+int8_t g_usb_led_marquee_enable = 0; /** dummy for chameleon */
 
 // #define SPI_FLASH
 
@@ -164,8 +167,6 @@ static bool shutdown_handler(nrf_pwr_mgmt_evt_t event) {
         // save settings
         settings_save();
 
-
-
         hal_spi_flash_sleep();
 
         err_code = bsp_wakeup_button_enable(BTN_ID_SLEEP);
@@ -192,15 +193,27 @@ NRF_PWR_MGMT_HANDLER_REGISTER(shutdown_handler, APP_SHUTDOWN_HANDLER_PRIORITY);
 /**
  *@brief :检测唤醒源
  */
-static void check_wakeup_src(void) {
+static uint32_t check_wakeup_src(void) {
     uint32_t rr = nrf_power_resetreas_get();
     NRF_LOG_INFO("nrf_power_resetreas_get: 0x%04x", rr);
 
-    if (cache_valid()) {
-        cache_data_t *p_cache = cache_get_data();
-        ntag_emu_set_tag(&(p_cache->ntag));
+    // 如果卡模拟器设置了默认卡，这里就不开启模拟NTAG
+    if (tag_helper_valid_default_slot() && (rr & NRF_POWER_RESETREAS_NFC_MASK)) {
+        tag_emulation_init();
+        hal_nfc_set_nrfx_irq_enable(true);
+        tag_emulation_sense_run();
     } else {
-        cache_clean();
+
+        extern const ntag_t default_ntag215;
+        ret_code_t err_code = ntag_emu_init(&default_ntag215);
+        APP_ERROR_CHECK(err_code);
+
+        if (cache_valid()) {
+            cache_data_t *p_cache = cache_get_data();
+            ntag_emu_set_tag(&(p_cache->ntag));
+        } else {
+            cache_clean();
+        }
     }
 
     if (rr == 0) {
@@ -212,6 +225,8 @@ static void check_wakeup_src(void) {
         NRF_LOG_INFO("First power system");
     }
     nrf_power_resetreas_clear(nrf_power_resetreas_get());
+
+    return rr;
 }
 
 /**
@@ -254,19 +269,14 @@ int main(void) {
     err_code = nrf_sdh_enable_request();
     APP_ERROR_CHECK(err_code);
 
-    extern const ntag_t default_ntag215;
-    err_code = ntag_emu_init(&default_ntag215);
-    APP_ERROR_CHECK(err_code);
-
-    check_wakeup_src();
-
-    //    err_code = ntag_store_init();
-    //    APP_ERROR_CHECK(err_code);
+    // cache_clean(); //FOR TESTING
 
     err_code = settings_init();
     // we ignore error here, cause flash may not be presented or settings.bin did not exist
     NRF_LOG_INFO("settings init: %d", err_code);
     // APP_ERROR_CHECK(err_code);
+
+    uint32_t wakeup_reason = check_wakeup_src();
 
     chrg_init();
 
@@ -277,11 +287,13 @@ int main(void) {
 
     NRF_LOG_DEBUG("init done");
 
+    setLanguage(p_settings->language);
+
     mui_t *p_mui = mui();
     mui_init(p_mui);
 
     mini_app_launcher_t *p_launcher = mini_app_launcher();
-    mini_app_launcher_init(p_launcher);
+    mini_app_launcher_init(p_launcher, wakeup_reason);
 
     NRF_LOG_FLUSH();
 

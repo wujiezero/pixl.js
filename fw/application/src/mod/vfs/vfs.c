@@ -1,19 +1,14 @@
 #include "vfs.h"
 
-#ifdef VFS_LFS_ENABLE
-    #include "vfs_driver_lfs.h"
-    #define VFS_DRIVER {.enabled = true, .p_driver = &vfs_driver_lfs}
-#else
-    #include "vfs_driver_spiffs.h"
-    #define VFS_DRIVER {.enabled = true, .p_driver = &vfs_driver_spiffs}
-#endif
+#include "vfs_driver_fs.h"
+#define VFS_DRIVER {.enabled = true, .p_driver = &vfs_driver_fs}
 
 typedef struct {
     bool enabled;
-    vfs_driver_t *p_driver;
+    const vfs_driver_t *p_driver;
 } vfs_drive_item_t;
 
-static vfs_drive_item_t vfs_drive_items[VFS_DRIVE_MAX] = {
+static const vfs_drive_item_t vfs_drive_items[VFS_DRIVE_MAX] = {
     [VFS_DRIVE_INT] =
         {
             .enabled = false,

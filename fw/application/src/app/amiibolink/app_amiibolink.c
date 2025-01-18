@@ -4,6 +4,7 @@
 #include "mui_include.h"
 
 #include "amiibolink_scene.h"
+#include "i18n/language.h"
 
 static void app_amiibolink_on_run(mini_app_inst_t *p_app_inst);
 static void app_amiibolink_on_kill(mini_app_inst_t *p_app_inst);
@@ -44,6 +45,9 @@ void app_amiibolink_on_run(mini_app_inst_t *p_app_inst) {
     mui_scene_dispatcher_set_scene_defines(p_app_handle->p_scene_dispatcher, amiibolink_scene_defines,
                                            AMIIBOLINK_SCENE_MAX);
 
+    extern const ntag_t default_ntag215;
+    APP_ERROR_CHECK(ntag_emu_init(&default_ntag215));
+
     if (p_app_inst->p_retain_data) {
         app_amiibolink_retain_data_t *p_retain = (app_amiibolink_retain_data_t *)p_app_inst->p_retain_data;
         p_app_handle->amiibolink_mode = p_retain->amiibolink_mode;
@@ -76,12 +80,14 @@ void app_amiibolink_on_kill(mini_app_inst_t *p_app_inst) {
 
 void app_amiibolink_on_event(mini_app_inst_t *p_app_inst, mini_app_event_t *p_event) {}
 
-const mini_app_t app_amiibolink_info = {.id = MINI_APP_ID_AMIIBOLINK,
+mini_app_t app_amiibolink_info = {.id = MINI_APP_ID_AMIIBOLINK,
                                         .name = "AmiiboLink",
+                                        .name_i18n_key = _L_APP_AMIIBOLINK,
                                         .icon = 0xe1c1,
                                         .deamon = false,
                                         .sys = false,
                                         .hibernate_enabled = true,
+                                        .icon_32x32 = &app_amiibo_link_32x32,
                                         .run_cb = app_amiibolink_on_run,
                                         .kill_cb = app_amiibolink_on_kill,
                                         .on_event_cb = app_amiibolink_on_event};

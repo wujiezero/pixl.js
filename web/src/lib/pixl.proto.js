@@ -2,6 +2,9 @@ import { sharedEventDispatcher } from "./event"
 import * as pixl from "./pixl.ble"
 import * as ByteBuffer from "bytebuffer"
 
+import i18n from '../i18n'
+
+
 const MTU_SIZE = 250
 const MTU_MAX_DATA_SIZE = 247
 const DF_HEADER_SIZE = 4
@@ -24,6 +27,7 @@ export function op_queue_push(cmd, tx_data_cb, rx_data_cb) {
     });
 
 }
+
 
 function process_op_queue() {
     if (!op_ongoing && op_queue.length > 0) {
@@ -179,9 +183,6 @@ export function vfs_open_file(path, mode) {
                 file_id: b.readUint8()
             }
         });
-
-
-    return p;
 }
 
 export function vfs_close_file(file_id) {
@@ -196,7 +197,7 @@ export function vfs_read_file(file_id) {
     console.log("vfs_read_file", file_id);
     return op_queue_push(0x14,
         b => { b.writeUint8(file_id) },
-        b => { return b.readBytes(b.remaining()) });
+        b => { return b.readBytes(b.remaining()).toArrayBuffer() });
 }
 
 export function vfs_write_file(file_id, data) {
@@ -234,6 +235,49 @@ export function vfs_rename(old_path, new_path) {
 
 export function get_utf8_byte_size(str) {
     return encode_utf8(str).length;
+}
+
+export function vfs_helper_read_file(path, success_cb, error_cb, done_cb) {
+    vfs_open_file(path, "r").then(res => {
+        console.log(res)
+        if (res.status != 0) {
+            console.log("vfs_open_file error: status=", res.status);
+            error_cb(new Error("create file failed!"));
+            done_cb();
+            return;
+        }
+        //读取
+
+        var state = {
+            file_id: res.data.file_id,
+        }
+
+        vfs_read_file(state.file_id).then(data => {
+            console.log(data)
+            console.log("vfs read end");
+            vfs_close_file(state.file_id).then(data1 => {
+                success_cb(data.data);
+                done_cb();
+            }).catch(e => {
+                error_cb(e);
+                done_cb();
+            })
+        }).catch(e => {
+            console.log("vfs read error", e);
+            vfs_close_file(state.file_id).then(data => {
+                error_cb(e);
+                done_cb();
+            }).catch(e => {
+                console.log("vfs close error", e);
+                error_cb(e);
+                done_cb();
+            })
+        });
+    }).catch(e => {
+        console.log("vfs_open_file error", e);
+        error_cb(e);
+        done_cb();
+    });
 }
 
 var file_write_queue = []
@@ -331,13 +375,13 @@ function vfs_process_file_write(path, file, progress_cb, success_cb, error_cb, d
 
 function path_validation(path) {
     if (get_utf8_byte_size(path) > 63) {
-        throw new Error("文件路径最大不能超过63个字节");
+        throw new Error(i18n.t('rename.nametoolong'));
     }
     if (path.length > 3) {
         var p = path.lastIndexOf('/');
         var file_name = path.substring(p + 1);
         if (get_utf8_byte_size(file_name) > 47) {
-            throw new Error("文件名最大不能超过47个字节");
+            throw new Error(i18n.t('rename.pathtoolong'));
         }
     }
 }
@@ -370,7 +414,12 @@ function read_meta(bb) {
     var meta = {
         notes: "",
         flags: {
-            hide: false
+            hide: false,
+            readonly: false
+        },
+        amiibo: {
+            head: 0,
+            tail: 0
         }
     }
     if (size == 0) {
@@ -392,6 +441,12 @@ function read_meta(bb) {
             if (flags & 1) {
                 meta.flags.hide = true;
             }
+            if (flags & 4) {
+                meta.flags.readonly = true;
+            }
+        } else if (type == 3) {
+            meta.amiibo.head = mb.readUint32();
+            meta.amiibo.tail = mb.readUint32();
         }
     }
 
@@ -403,7 +458,7 @@ function write_meta(bb, meta) {
     var bytes = encode_utf8(notes);
 
     if (bytes.length > 90) {
-        throw new Error("备注最大只能是90字节，即90个字符或30个汉字！（当前" + bytes.length + "字节）")
+        throw new Error(i18n.t('properties.remarktoolong') + bytes.length + i18n.t('properties.remarktoolongend'))
     }
 
     var tb = new ByteBuffer();
@@ -422,7 +477,16 @@ function write_meta(bb, meta) {
     if (meta.flags.hide) {
         flags |= 1;
     }
+    if (meta.flags.readonly) {
+        flags |= 4;
+    }
     tb.writeUint8(flags);
+
+    if (meta.amiibo.head > 0 || meta.amiibo.tail > 0) {
+        tb.writeUint8(3);
+        tb.writeUint32(meta.amiibo.head);
+        tb.writeUint32(meta.amiibo.tail);
+    }
     tb.flip();
 
     bb.writeUint8(tb.remaining());
@@ -431,26 +495,13 @@ function write_meta(bb, meta) {
 
 
 function decode_utf8(bytes) {
-    var encoded = "";
-    for (var i = 0; i < bytes.length; i++) {
-        encoded += '%' + bytes[i].toString(16);
-    }
-    return decodeURIComponent(encoded);
+    //return ByteBuffer.wrap(bytes).toUTF8();
+    return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
 function encode_utf8(text) {
-    var code = encodeURIComponent(text);
-    var bytes = [];
-    for (var i = 0; i < code.length; i++) {
-        const c = code.charAt(i);
-        if (c === '%') {
-            const hex = code.charAt(i + 1) + code.charAt(i + 2);
-            const hexVal = parseInt(hex, 16);
-            bytes.push(hexVal);
-            i += 2;
-        } else bytes.push(c.charCodeAt(0));
-    }
-    return bytes;
+    //return Array.from(new Uint8Array(ByteBuffer.wrap(text, 'utf8').toArrayBuffer()));
+    return Array.from(new TextEncoder().encode(text));
 }
 
 function read_string(bb) {
@@ -560,4 +611,9 @@ function on_ble_disconnected() {
     op_ongoing = false;
 
 }
+
+
+
+
+
 

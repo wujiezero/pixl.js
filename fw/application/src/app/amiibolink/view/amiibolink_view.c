@@ -1,13 +1,15 @@
 #include "amiibolink_view.h"
-#include "amiibo_data.h"
 #include "amiibo_helper.h"
 #include "mui_element.h"
 #include "nrf_log.h"
 #include "nrf_pwr_mgmt.h"
 #include "ntag_def.h"
 #include "ntag_emu.h"
+#include "i18n/language.h"
+#include "db_header.h"
 
 #define ICON_RANDOM 0xe20d
+#define ICON_AUTO 0xe1b2
 #define ICON_NTAG 0xe1cf
 #define ICON_LEFT 0xe1ac
 #define ICON_RIGHT 0xe1aa
@@ -27,10 +29,12 @@ static void amiibolink_view_on_draw(mui_view_t *p_view, mui_canvas_t *p_canvas) 
     mui_canvas_set_draw_color(p_canvas, 0);
 
     // draw mode icon
-    if (p_amiibolink_view->amiibolink_mode == BLE_AMIIBOLINK_MODE_RANDOM ||
-        p_amiibolink_view->amiibolink_mode ==BLE_AMIIBOLINK_MODE_RANDOM_AUTO_GEN) {
+    if (p_amiibolink_view->amiibolink_mode == BLE_AMIIBOLINK_MODE_RANDOM){
         mui_canvas_set_font(p_canvas, u8g2_font_siji_t_6x10);
         mui_canvas_draw_glyph(p_canvas, 10, y + 10, ICON_RANDOM);
+    }else if(p_amiibolink_view->amiibolink_mode ==BLE_AMIIBOLINK_MODE_RANDOM_AUTO_GEN) {
+        mui_canvas_set_font(p_canvas, u8g2_font_siji_t_6x10);
+        mui_canvas_draw_glyph(p_canvas, 10, y + 10, ICON_AUTO);
     } else if (p_amiibolink_view->amiibolink_mode == BLE_AMIIBOLINK_MODE_CYCLE) {
 
         if (p_amiibolink_view->index > 0) {
@@ -70,16 +74,12 @@ static void amiibolink_view_on_draw(mui_view_t *p_view, mui_canvas_t *p_canvas) 
     uint32_t head = to_little_endian_int32(&ntag->data[84]);
     uint32_t tail = to_little_endian_int32(&ntag->data[88]);
 
-    const amiibo_data_t *amd = find_amiibo_data(head, tail);
+    const db_amiibo_t *amd = get_amiibo_by_id(head, tail);
     if (amd != NULL) {
-        NRF_LOG_INFO("amd: %s", nrf_log_push(amd->name));
-        mui_canvas_draw_utf8(p_canvas, 5, y += 15, amd->name);
+        const char *name =(getLanguage() == LANGUAGE_ZH_TW || getLanguage() == LANGUAGE_ZH_HANS) ? amd->name_cn : amd->name_en;
+        mui_element_autowrap_text(p_canvas, 5, y += 15, mui_canvas_get_width(p_canvas), 24, name);
         if (strlen(ntag->notes) > 0) {
-            NRF_LOG_INFO("ntag notes: %s", nrf_log_push(ntag->notes));
             mui_element_autowrap_text(p_canvas, 5, y += 15, mui_canvas_get_width(p_canvas), 24, ntag->notes);
-        } else {
-            NRF_LOG_INFO("amd notes: %s", nrf_log_push(amd->notes));
-            mui_element_autowrap_text(p_canvas, 5, y += 15, mui_canvas_get_width(p_canvas), 24, amd->notes);
         }
     } else {
         if (head > 0 && tail > 0) {
@@ -87,50 +87,37 @@ static void amiibolink_view_on_draw(mui_view_t *p_view, mui_canvas_t *p_canvas) 
             sprintf(buff, "[%08x:%08x]", head, tail);
             mui_canvas_draw_utf8(p_canvas, 5, y += 15, buff);
         } else {
-            mui_canvas_draw_utf8(p_canvas, 5, y += 15, "空标签");
+            mui_canvas_draw_utf8(p_canvas, 5, y += 15, getLangString(_L_BLANK_TAG));
         }
     }
 }
 
 static void amiibolink_view_on_input(mui_view_t *p_view, mui_input_event_t *event) {
     amiibolink_view_t *p_amiibolink_view = p_view->user_data;
-    switch (event->type) {
-    case INPUT_TYPE_LONG: {
+    if(event->key == INPUT_KEY_CENTER){
         if (p_amiibolink_view->event_cb) {
             p_amiibolink_view->event_cb(AMIIBOLINK_VIEW_EVENT_MENU, p_amiibolink_view);
         }
-        break;
+        return;
     }
-    case INPUT_TYPE_SHORT: {
-
-        if(event->key == INPUT_KEY_CENTER){
-            if (p_amiibolink_view->event_cb) {
-                p_amiibolink_view->event_cb(AMIIBOLINK_VIEW_EVENT_MENU, p_amiibolink_view);
+    if (p_amiibolink_view->amiibolink_mode == BLE_AMIIBOLINK_MODE_CYCLE) {
+        if (event->key == INPUT_KEY_LEFT) {
+            if (p_amiibolink_view->index > 0) {
+                p_amiibolink_view->index--;
+            } else {
+                p_amiibolink_view->index = p_amiibolink_view->max_size - 1;
             }
-            return;
+        } else if (event->key == INPUT_KEY_RIGHT) {
+            if (p_amiibolink_view->index < p_amiibolink_view->max_size - 1) {
+                p_amiibolink_view->index++;
+            } else {
+                p_amiibolink_view->index = 0;
+            }
         }
 
-        if (p_amiibolink_view->amiibolink_mode == BLE_AMIIBOLINK_MODE_CYCLE) {
-            if (event->key == INPUT_KEY_LEFT) {
-                if (p_amiibolink_view->index > 0) {
-                    p_amiibolink_view->index--;
-                } else {
-                    p_amiibolink_view->index = p_amiibolink_view->max_size - 1;
-                }
-            } else if (event->key == INPUT_KEY_RIGHT) {
-                if (p_amiibolink_view->index < p_amiibolink_view->max_size - 1) {
-                    p_amiibolink_view->index++;
-                } else {
-                    p_amiibolink_view->index = 0;
-                }
-            }
-
-            if (p_amiibolink_view->event_cb) {
-                p_amiibolink_view->event_cb(AMIIBOLINK_VIEW_EVENT_UPDATE, p_amiibolink_view);
-            }
+        if (p_amiibolink_view->event_cb) {
+            p_amiibolink_view->event_cb(AMIIBOLINK_VIEW_EVENT_UPDATE, p_amiibolink_view);
         }
-        break;
-    }
     }
 }
 

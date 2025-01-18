@@ -6,10 +6,11 @@ SDK_ROOT := $(NRF52_SDK_ROOT)
 PROJ_DIR := ./src
 COMP_DIR := ../components
 U8G2_ROOT := ../components/u8g2/csrc
+CHAMELEON_ROOT :=$(COMP_DIR)/chameleon-ultra/firmware
 
 APP_VERSION ?= 1
-RELEASE ?= 0
-LFS_ENABLE ?= 0
+RELEASE ?= 1
+BOARD ?= OLED
 
 $(OUTPUT_DIRECTORY)/pixljs.out: \
   LINKER_SCRIPT  := ../ld/application.ld
@@ -89,92 +90,93 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_hmac.c \
   $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_aes.c \
   $(SDK_ROOT)/external/mbedtls/library/aes.c \
-	$(SDK_ROOT)/external/mbedtls/library/aesni.c \
-	$(SDK_ROOT)/external/mbedtls/library/arc4.c \
-	$(SDK_ROOT)/external/mbedtls/library/aria.c \
-	$(SDK_ROOT)/external/mbedtls/library/asn1parse.c \
-	$(SDK_ROOT)/external/mbedtls/library/asn1write.c \
-	$(SDK_ROOT)/external/mbedtls/library/base64.c \
-	$(SDK_ROOT)/external/mbedtls/library/bignum.c \
-	$(SDK_ROOT)/external/mbedtls/library/blowfish.c \
-	$(SDK_ROOT)/external/mbedtls/library/camellia.c \
-	$(SDK_ROOT)/external/mbedtls/library/ccm.c \
-	$(SDK_ROOT)/external/mbedtls/library/certs.c \
-	$(SDK_ROOT)/external/mbedtls/library/chacha20.c \
-	$(SDK_ROOT)/external/mbedtls/library/chachapoly.c \
-	$(SDK_ROOT)/external/mbedtls/library/cipher.c \
-	$(SDK_ROOT)/external/mbedtls/library/cipher_wrap.c \
-	$(SDK_ROOT)/external/mbedtls/library/cmac.c \
-	$(SDK_ROOT)/external/mbedtls/library/ctr_drbg.c \
-	$(SDK_ROOT)/external/mbedtls/library/debug.c \
-	$(SDK_ROOT)/external/mbedtls/library/des.c \
-	$(SDK_ROOT)/external/mbedtls/library/dhm.c \
-	$(SDK_ROOT)/external/mbedtls/library/ecdh.c \
-	$(SDK_ROOT)/external/mbedtls/library/ecdsa.c \
-	$(SDK_ROOT)/external/mbedtls/library/ecjpake.c \
-	$(SDK_ROOT)/external/mbedtls/library/ecp.c \
-	$(SDK_ROOT)/external/mbedtls/library/ecp_curves.c \
-	$(SDK_ROOT)/external/mbedtls/library/entropy.c \
-	$(SDK_ROOT)/external/mbedtls/library/entropy_poll.c \
-	$(SDK_ROOT)/external/mbedtls/library/error.c \
-	$(SDK_ROOT)/external/mbedtls/library/gcm.c \
-	$(SDK_ROOT)/external/mbedtls/library/havege.c \
-	$(SDK_ROOT)/external/mbedtls/library/hmac_drbg.c \
-	$(SDK_ROOT)/external/mbedtls/library/md.c \
-	$(SDK_ROOT)/external/mbedtls/library/md2.c \
-	$(SDK_ROOT)/external/mbedtls/library/md4.c \
-	$(SDK_ROOT)/external/mbedtls/library/md5.c \
-	$(SDK_ROOT)/external/mbedtls/library/md_wrap.c \
-	$(SDK_ROOT)/external/mbedtls/library/memory_buffer_alloc.c \
-	$(SDK_ROOT)/external/mbedtls/library/net_sockets.c \
-	$(SDK_ROOT)/external/mbedtls/library/nist_kw.c \
-	$(SDK_ROOT)/external/mbedtls/library/oid.c \
-	$(SDK_ROOT)/external/mbedtls/library/padlock.c \
-	$(SDK_ROOT)/external/mbedtls/library/pem.c \
-	$(SDK_ROOT)/external/mbedtls/library/pk.c \
-	$(SDK_ROOT)/external/mbedtls/library/pk_wrap.c \
-	$(SDK_ROOT)/external/mbedtls/library/pkcs11.c \
-	$(SDK_ROOT)/external/mbedtls/library/pkcs12.c \
-	$(SDK_ROOT)/external/mbedtls/library/pkcs5.c \
-	$(SDK_ROOT)/external/mbedtls/library/pkparse.c \
-	$(SDK_ROOT)/external/mbedtls/library/pkwrite.c \
-	$(SDK_ROOT)/external/mbedtls/library/platform.c \
-	$(SDK_ROOT)/external/mbedtls/library/platform_util.c \
-	$(SDK_ROOT)/external/mbedtls/library/poly1305.c \
-	$(SDK_ROOT)/external/mbedtls/library/ripemd160.c \
-	$(SDK_ROOT)/external/mbedtls/library/rsa.c \
-	$(SDK_ROOT)/external/mbedtls/library/rsa_internal.c \
-	$(SDK_ROOT)/external/mbedtls/library/sha1.c \
-	$(SDK_ROOT)/external/mbedtls/library/sha256.c \
-	$(SDK_ROOT)/external/mbedtls/library/sha512.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_cache.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_ciphersuites.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_cli.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_cookie.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_srv.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_ticket.c \
-	$(SDK_ROOT)/external/mbedtls/library/ssl_tls.c \
-	$(SDK_ROOT)/external/mbedtls/library/threading.c \
-	$(SDK_ROOT)/external/mbedtls/library/version.c \
-	$(SDK_ROOT)/external/mbedtls/library/version_features.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509_create.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509_crl.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509_crt.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509_csr.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509write_crt.c \
-	$(SDK_ROOT)/external/mbedtls/library/x509write_csr.c \
-	$(SDK_ROOT)/external/mbedtls/library/xtea.c \
+  $(SDK_ROOT)/external/mbedtls/library/aesni.c \
+  $(SDK_ROOT)/external/mbedtls/library/arc4.c \
+  $(SDK_ROOT)/external/mbedtls/library/aria.c \
+  $(SDK_ROOT)/external/mbedtls/library/asn1parse.c \
+  $(SDK_ROOT)/external/mbedtls/library/asn1write.c \
+  $(SDK_ROOT)/external/mbedtls/library/base64.c \
+  $(SDK_ROOT)/external/mbedtls/library/bignum.c \
+  $(SDK_ROOT)/external/mbedtls/library/blowfish.c \
+  $(SDK_ROOT)/external/mbedtls/library/camellia.c \
+  $(SDK_ROOT)/external/mbedtls/library/ccm.c \
+  $(SDK_ROOT)/external/mbedtls/library/certs.c \
+  $(SDK_ROOT)/external/mbedtls/library/chacha20.c \
+  $(SDK_ROOT)/external/mbedtls/library/chachapoly.c \
+  $(SDK_ROOT)/external/mbedtls/library/cipher.c \
+  $(SDK_ROOT)/external/mbedtls/library/cipher_wrap.c \
+  $(SDK_ROOT)/external/mbedtls/library/cmac.c \
+  $(SDK_ROOT)/external/mbedtls/library/ctr_drbg.c \
+  $(SDK_ROOT)/external/mbedtls/library/debug.c \
+  $(SDK_ROOT)/external/mbedtls/library/des.c \
+  $(SDK_ROOT)/external/mbedtls/library/dhm.c \
+  $(SDK_ROOT)/external/mbedtls/library/ecdh.c \
+  $(SDK_ROOT)/external/mbedtls/library/ecdsa.c \
+  $(SDK_ROOT)/external/mbedtls/library/ecjpake.c \
+  $(SDK_ROOT)/external/mbedtls/library/ecp.c \
+  $(SDK_ROOT)/external/mbedtls/library/ecp_curves.c \
+  $(SDK_ROOT)/external/mbedtls/library/entropy.c \
+  $(SDK_ROOT)/external/mbedtls/library/entropy_poll.c \
+  $(SDK_ROOT)/external/mbedtls/library/error.c \
+  $(SDK_ROOT)/external/mbedtls/library/gcm.c \
+  $(SDK_ROOT)/external/mbedtls/library/havege.c \
+  $(SDK_ROOT)/external/mbedtls/library/hmac_drbg.c \
+  $(SDK_ROOT)/external/mbedtls/library/md.c \
+  $(SDK_ROOT)/external/mbedtls/library/md2.c \
+  $(SDK_ROOT)/external/mbedtls/library/md4.c \
+  $(SDK_ROOT)/external/mbedtls/library/md5.c \
+  $(SDK_ROOT)/external/mbedtls/library/md_wrap.c \
+  $(SDK_ROOT)/external/mbedtls/library/memory_buffer_alloc.c \
+  $(SDK_ROOT)/external/mbedtls/library/net_sockets.c \
+  $(SDK_ROOT)/external/mbedtls/library/nist_kw.c \
+  $(SDK_ROOT)/external/mbedtls/library/oid.c \
+  $(SDK_ROOT)/external/mbedtls/library/padlock.c \
+  $(SDK_ROOT)/external/mbedtls/library/pem.c \
+  $(SDK_ROOT)/external/mbedtls/library/pk.c \
+  $(SDK_ROOT)/external/mbedtls/library/pk_wrap.c \
+  $(SDK_ROOT)/external/mbedtls/library/pkcs11.c \
+  $(SDK_ROOT)/external/mbedtls/library/pkcs12.c \
+  $(SDK_ROOT)/external/mbedtls/library/pkcs5.c \
+  $(SDK_ROOT)/external/mbedtls/library/pkparse.c \
+  $(SDK_ROOT)/external/mbedtls/library/pkwrite.c \
+  $(SDK_ROOT)/external/mbedtls/library/platform.c \
+  $(SDK_ROOT)/external/mbedtls/library/platform_util.c \
+  $(SDK_ROOT)/external/mbedtls/library/poly1305.c \
+  $(SDK_ROOT)/external/mbedtls/library/ripemd160.c \
+  $(SDK_ROOT)/external/mbedtls/library/rsa.c \
+  $(SDK_ROOT)/external/mbedtls/library/rsa_internal.c \
+  $(SDK_ROOT)/external/mbedtls/library/sha1.c \
+  $(SDK_ROOT)/external/mbedtls/library/sha256.c \
+  $(SDK_ROOT)/external/mbedtls/library/sha512.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_cache.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_ciphersuites.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_cli.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_cookie.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_srv.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_ticket.c \
+  $(SDK_ROOT)/external/mbedtls/library/ssl_tls.c \
+  $(SDK_ROOT)/external/mbedtls/library/threading.c \
+  $(SDK_ROOT)/external/mbedtls/library/version.c \
+  $(SDK_ROOT)/external/mbedtls/library/version_features.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509_create.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509_crl.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509_crt.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509_csr.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509write_crt.c \
+  $(SDK_ROOT)/external/mbedtls/library/x509write_csr.c \
+  $(SDK_ROOT)/external/mbedtls/library/xtea.c \
   $(PROJ_DIR)/main.c \
-  $(PROJ_DIR)/ntag_emu_v2.c \
-  $(PROJ_DIR)/ntag_store.c \
+  $(PROJ_DIR)/ntag/ntag_emu_v2.c \
+  $(PROJ_DIR)/ntag/ntag_store.c \
   $(PROJ_DIR)/bat.c \
   $(PROJ_DIR)/utils.c \
   $(PROJ_DIR)/version2.c \
-  $(PROJ_DIR)/amiibo_data.c \
-  $(PROJ_DIR)/amiibo_data_lookup.c \
   $(PROJ_DIR)/amiibo_helper.c \
+  $(PROJ_DIR)/mui_qrcode_helper.c \
   $(PROJ_DIR)/app_error_handler.c \
+  $(PROJ_DIR)/interrupt_handler.c \
+  $(PROJ_DIR)/libc_nano_stubs.c \
   $(PROJ_DIR)/hal/hal_spi_bus.c \
   $(PROJ_DIR)/hal/hal_spi_flash.c \
   $(PROJ_DIR)/hal/hal_internal_flash.c \
@@ -198,16 +200,24 @@ SRC_FILES += \
   $(PROJ_DIR)/mui/mui_view_dispatcher.c \
   $(PROJ_DIR)/mui/mui_scene_dispatcher.c \
   $(PROJ_DIR)/mui/mui_u8g2.c \
+  $(PROJ_DIR)/mui/u8g2_font_likeminecraft_te.c \
+  $(PROJ_DIR)/mui/u8g2_font_siji_t_6x10.c \
+  $(PROJ_DIR)/mui/u8g2_font_wqy12_t_gb2312a.c \
+  $(PROJ_DIR)/mui/u8g2_font_wqy12_t_gb2312a_lite.c \
   $(PROJ_DIR)/mui/mui_core.c \
   $(PROJ_DIR)/mui/mui_canvas.c \
   $(PROJ_DIR)/mui/mui_event.c \
   $(PROJ_DIR)/mui/mui_input.c \
   $(PROJ_DIR)/mui/mui_element.c \
   $(PROJ_DIR)/mui/mui_mem.c \
+  $(PROJ_DIR)/mui/mui_anim.c \
+  $(PROJ_DIR)/mui/mui_math.c \
+  $(PROJ_DIR)/mui/mui_resource.c \
   $(PROJ_DIR)/mui/view/mui_list_view.c \
   $(PROJ_DIR)/mui/view/mui_text_input.c \
   $(PROJ_DIR)/mui/view/mui_msg_box.c \
   $(PROJ_DIR)/mui/view/mui_progress_bar.c \
+  $(PROJ_DIR)/mui/view/mui_toast_view.c \
   $(PROJ_DIR)/core/mini_app_launcher.c \
   $(PROJ_DIR)/core/mini_app_registry.c \
   $(PROJ_DIR)/core/mini_app_data.c \
@@ -222,6 +232,16 @@ SRC_FILES += \
   $(PROJ_DIR)/app/player/scene/player_scene.c \
   $(PROJ_DIR)/app/player/scene/player_scene_file_browser.c \
   $(PROJ_DIR)/app/player/scene/player_scene_play.c \
+  $(PROJ_DIR)/app/game/app_game.c \
+  $(PROJ_DIR)/app/game/view/game_view.c \
+  $(PROJ_DIR)/app/game/scene/game_scene.c \
+  $(PROJ_DIR)/app/game/scene/game_scene_game_list.c \
+  $(PROJ_DIR)/app/game/scene/game_scene_play.c \
+  $(PROJ_DIR)/app/game/port/common/driver.c \
+  $(PROJ_DIR)/app/game/port/tiny_lander/tiny_lander.c \
+  $(PROJ_DIR)/app/game/port/tiny_invaders/tiny_invaders.c \
+  $(PROJ_DIR)/app/game/port/tiny_arkanoid/tiny_arkanoid.c \
+  $(PROJ_DIR)/app/game/port/tiny_tris/tiny_tris.c \
   $(PROJ_DIR)/app/amiibolink/app_amiibolink.c \
   $(PROJ_DIR)/app/amiibolink/view/amiibolink_view.c \
   $(PROJ_DIR)/app/amiibolink/scene/amiibolink_scene.c \
@@ -229,12 +249,48 @@ SRC_FILES += \
   $(PROJ_DIR)/app/amiibolink/scene/amiibolink_scene_menu.c \
   $(PROJ_DIR)/app/amiibolink/scene/amiibolink_scene_menu_mode.c \
   $(PROJ_DIR)/app/amiibolink/scene/amiibolink_scene_menu_ver.c \
+  $(PROJ_DIR)/app/amiidb/app_amiidb.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_main.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_game_list.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_amiibo_detail.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_amiibo_detail_menu.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_amiibo_search.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_fav_list.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_fav_select.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_fav_list_menu.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_data_list.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_data_select.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_data_list_menu.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_settings.c \
+  $(PROJ_DIR)/app/amiidb/scene/amiidb_scene_settings_slot_num.c \
+  $(PROJ_DIR)/app/amiidb/api/amiidb_api_slot.c \
+  $(PROJ_DIR)/app/amiidb/api/amiidb_api_fav.c \
+  $(PROJ_DIR)/app/amiidb/api/amiidb_api_db.c \
+  $(PROJ_DIR)/app/amiidb/view/amiibo_view.c \
+  $(PROJ_DIR)/app/chameleon/app_chameleon.c \
+  $(PROJ_DIR)/app/chameleon/view/chameleon_view.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_factory.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_main.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_advanced.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_advanced_id_edit.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_slot.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_data.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_type.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_slot_select.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_write_mode_select.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_data_file_load.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_data_file_save.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene_menu_card_set_name.c \
+  $(PROJ_DIR)/app/chameleon/scene/chameleon_scene.c \
+  $(PROJ_DIR)/app/chameleon/port/fds_utils.c \
+  $(PROJ_DIR)/app/chameleon/port/tag_helper.c \
   $(PROJ_DIR)/app/desktop/app_desktop.c \
+  $(PROJ_DIR)/app/desktop/view/app_list_view.c \
   $(PROJ_DIR)/app/amiibo/app_amiibo.c \
   $(PROJ_DIR)/app/amiibo/view/amiibo_detail_view.c \
   $(PROJ_DIR)/app/amiibo/scene/amiibo_scene.c \
-  $(PROJ_DIR)/app/amiibo/scene/amiibo_scene_storage_list.c \
-  $(PROJ_DIR)/app/amiibo/scene/amiibo_scene_storage_list_menu.c \
   $(PROJ_DIR)/app/amiibo/scene/amiibo_scene_amiibo_detail.c \
   $(PROJ_DIR)/app/amiibo/scene/amiibo_scene_amiibo_detail_menu.c \
   $(PROJ_DIR)/app/amiibo/scene/amiibo_scene_file_browser.c \
@@ -245,7 +301,30 @@ SRC_FILES += \
   $(PROJ_DIR)/app/settings/scene/settings_scene_version.c \
   $(PROJ_DIR)/app/settings/scene/settings_scene_sleep_timeout.c \
   $(PROJ_DIR)/app/settings/scene/settings_scene_lcd_backlight.c \
+  $(PROJ_DIR)/app/settings/scene/settings_scene_oled_contrast.c \
+  $(PROJ_DIR)/app/settings/scene/settings_scene_language.c \
+  $(PROJ_DIR)/app/settings/scene/settings_scene_storage.c \
+  $(PROJ_DIR)/app/settings/scene/settings_scene_about.c \
+  $(PROJ_DIR)/i18n/en_US.c \
+  $(PROJ_DIR)/i18n/zh_Hans.c \
+  $(PROJ_DIR)/i18n/zh_TW.c \
+  $(PROJ_DIR)/i18n/es_ES.c \
+  $(PROJ_DIR)/i18n/it_IT.c \
+  $(PROJ_DIR)/i18n/de_DE.c \
+  $(PROJ_DIR)/i18n/fr_FR.c \
+  $(PROJ_DIR)/i18n/hu_HU.c \
+  $(PROJ_DIR)/i18n/ja_JP.c \
+  $(PROJ_DIR)/i18n/nl_NL.c \
+  $(PROJ_DIR)/i18n/pt_BR.c \
+  $(PROJ_DIR)/i18n/pt_PT.c \
+  $(PROJ_DIR)/i18n/ru_RU.c \
+  $(PROJ_DIR)/i18n/language.c \
   $(PROJ_DIR)/hal/hal_nfc_t2t.c \
+  $(PROJ_DIR)/amiidb/db_amiibo.c \
+  $(PROJ_DIR)/amiidb/db_game.c \
+  $(PROJ_DIR)/amiidb/db_link.c \
+  $(PROJ_DIR)/amiidb/db_search.c \
+  $(PROJ_DIR)/sdk/nrfx/nrfx_nfct.c \
   $(PROJ_DIR)/sdk/pwr_mgmt/nrf_pwr_mgmt.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
@@ -262,9 +341,21 @@ SRC_FILES += \
   $(COMP_DIR)/spiffs/src/spiffs_gc.c \
   $(COMP_DIR)/spiffs/src/spiffs_hydrogen.c \
   $(COMP_DIR)/spiffs/src/spiffs_nucleus.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/hf/crypto1_helper.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/hf/nfc_14a.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/hf/nfc_mf1.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/hf/nfc_mf0_ntag.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/crc_utils.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/hex_utils.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/mf1_crapto1.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/mf1_crypto1.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/parity.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/tag_emulation.c \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/tag_persistence.c \
   $(COMP_DIR)/littlefs/lfs.c \
   $(COMP_DIR)/littlefs/lfs_util.c \
   $(COMP_DIR)/cwalk/src/cwalk.c \
+  $(COMP_DIR)/qrcode/c/qrcodegen.c \
   $(U8G2_ROOT)/u8g2_bitmap.c \
   $(U8G2_ROOT)/u8g2_box.c \
   $(U8G2_ROOT)/u8g2_buffer.c \
@@ -273,7 +364,6 @@ SRC_FILES += \
   $(U8G2_ROOT)/u8g2_d_memory.c \
   $(U8G2_ROOT)/u8g2_d_setup.c \
   $(U8G2_ROOT)/u8g2_font.c \
-  $(U8G2_ROOT)/u8g2_fonts.c \
   $(U8G2_ROOT)/u8g2_hvline.c \
   $(U8G2_ROOT)/u8g2_input_value.c \
   $(U8G2_ROOT)/u8g2_intersection.c \
@@ -302,7 +392,8 @@ SRC_FILES += \
   $(U8G2_ROOT)/u8x8_setup.c \
   $(U8G2_ROOT)/u8x8_string.c \
   $(U8G2_ROOT)/u8x8_u16toa.c \
-  $(U8G2_ROOT)/u8x8_u8toa.c 
+  $(U8G2_ROOT)/u8x8_u8toa.c \
+  $(U8G2_ROOT)/u8x8_d_ssd1306_128x64_noname.c
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -446,22 +537,26 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/stack_guard \
   $(SDK_ROOT)/components/libraries/log/src \
   $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls \
+  $(SDK_ROOT)/components/libraries/fds \
   $(SDK_ROOT)/external/mbedtls/include \
   $(PROJ_DIR) \
   $(PROJ_DIR)/hal \
   $(PROJ_DIR)/mui \
   $(PROJ_DIR)/mui/view \
   $(PROJ_DIR)/core \
+  $(PROJ_DIR)/ntag \
   $(PROJ_DIR)/mod \
   $(PROJ_DIR)/mod/vfs \
   $(PROJ_DIR)/mod/ble \
   $(PROJ_DIR)/mod/df \
+  $(PROJ_DIR)/amiidb \
   $(PROJ_DIR)/app/status_bar \
   $(PROJ_DIR)/app/status_bar/view \
   $(PROJ_DIR)/app/ble \
   $(PROJ_DIR)/app/ble/scene \
   $(PROJ_DIR)/app/ble/view \
   $(PROJ_DIR)/app/desktop \
+  $(PROJ_DIR)/app/desktop/view \
   $(PROJ_DIR)/app/settings \
   $(PROJ_DIR)/app/settings/scene \
   $(PROJ_DIR)/app/amiibo \
@@ -470,9 +565,24 @@ INC_FOLDERS += \
   $(PROJ_DIR)/app/player \
   $(PROJ_DIR)/app/player/view \
   $(PROJ_DIR)/app/player/scene \
+  $(PROJ_DIR)/app/game \
+  $(PROJ_DIR)/app/game/view \
+  $(PROJ_DIR)/app/game/scene \
+  $(PROJ_DIR)/app/game/port/tiny_lander \
+  $(PROJ_DIR)/app/game/port/tiny_invaders \
+  $(PROJ_DIR)/app/game/port/tiny_arkanoid \
+  $(PROJ_DIR)/app/game/port/tiny_tris \
   $(PROJ_DIR)/app/amiibolink \
   $(PROJ_DIR)/app/amiibolink/view \
   $(PROJ_DIR)/app/amiibolink/scene \
+  $(PROJ_DIR)/app/amiidb \
+  $(PROJ_DIR)/app/amiidb/scene \
+  $(PROJ_DIR)/app/amiidb/view \
+  $(PROJ_DIR)/app/amiidb/api \
+  $(PROJ_DIR)/app/chameleon \
+  $(PROJ_DIR)/app/chameleon/port \
+  $(PROJ_DIR)/app/chameleon/view \
+  $(PROJ_DIR)/app/chameleon/scene \
   $(PROJ_DIR)/sdk/pwr_mgmt \
   $(COMP_DIR)/amiitool/include \
   $(COMP_DIR)/mlib \
@@ -481,14 +591,25 @@ INC_FOLDERS += \
   $(COMP_DIR)/littlefs \
   $(COMP_DIR)/tlsf \
   $(COMP_DIR)/cwalk/include \
-  $(SDK_ROOT)/components/libraries/bsp
+  $(COMP_DIR)/qrcode/c \
+  $(SDK_ROOT)/components/libraries/bsp \
+  $(CHAMELEON_ROOT)/application/src/rfid \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag \
+  $(CHAMELEON_ROOT)/application/src/rfid/nfctag/hf \
+  $(CHAMELEON_ROOT)/application/src/utils \
+  $(CHAMELEON_ROOT)/application/src \
+  $(CHAMELEON_ROOT)/application/src/bsp \
+  $(COMP_DIR)/chameleon-ultra/firmware/common
 
 # Libraries common to all targets
 LIB_FILES += \
   $(SDK_ROOT)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a \
 # Optimization flags
-OPT = -O3 -g3
-# OPT = -Os -ffunction-sections -fdata-sections
+ifneq ($(RELEASE), 1)
+OPT = -O2 -g3
+else
+OPT = -Os -ffunction-sections -fdata-sections
+endif
 # Uncomment the line below to enable link time optimization
 # OPT += -flto
 
@@ -497,7 +618,7 @@ CFLAGS += $(OPT)
 CFLAGS += -DAPP_TIMER_V2
 CFLAGS += -DAPP_TIMER_V2_RTC1_ENABLED
 #CFLAGS += -DBOARD_PCA10040
-CFLAGS += -DCUSTOM_BOARD_INC=am_board
+CFLAGS += -DBOARD_CUSTOM
 #CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
@@ -507,14 +628,14 @@ CFLAGS += -DNRF_SD_BLE_API_VERSION=7
 CFLAGS += -DS112
 CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DLV_LVGL_H_INCLUDE_SIMPLE 
+CFLAGS += -DBOARD_$(BOARD)
 ifneq ($(RELEASE), 1)
 CFLAGS += -DDEBUG
 CFLAGS += -DEBUG_NRF
+#CFLAGS += -DU8G2_USE_LARGE_FONTS
 else
 CFLAGS += -DNDEBUG
-endif
-ifeq ($(LFS_ENABLE), 1)
-CFLAGS += -DVFS_LFS_ENABLE
+CFLAGS += -DU8G2_USE_LARGE_FONTS
 endif
 CFLAGS += -DMBEDTLS_CONFIG_FILE=\"nrf_crypto_mbedtls_config.h\"
 CFLAGS += -DM_USE_THREAD_BACKEND=0
@@ -536,7 +657,7 @@ ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ASMFLAGS += -DAPP_TIMER_V2
 ASMFLAGS += -DAPP_TIMER_V2_RTC1_ENABLED
 # ASMFLAGS += -DBOARD_PCA10040
-ASMFLAGS += -DCUSTOM_BOARD_INC=am_board
+ASMFLAGS += -DBOARD_CUSTOM
 # ASMFLAGS += -DCONFIG_GPIO_AS_PINRESET
 ASMFLAGS += -DFLOAT_ABI_HARD
 ASMFLAGS += -DNRF52
@@ -558,9 +679,9 @@ LDFLAGS += -Wl,--gc-sections
 LDFLAGS += --specs=nano.specs
 LDFLAGS += -u _printf_float
 
-pixljs: CFLAGS += -D__HEAP_SIZE=8192
+pixljs: CFLAGS += -D__HEAP_SIZE=4096
 pixljs: CFLAGS += -D__STACK_SIZE=8192
-pixljs: ASMFLAGS += -D__HEAP_SIZE=8192
+pixljs: ASMFLAGS += -D__HEAP_SIZE=4096
 pixljs: ASMFLAGS += -D__STACK_SIZE=8192
 
 # Add standard libraries at the very end of the linker input, after all objects
@@ -613,6 +734,7 @@ sdk_config:
 
 version:
 	@cd ../ && python3 scripts/version_gen.py
+	@echo build: BOARD=$(BOARD) RELEASE=$(RELEASE) APP_VERSION=$(APP_VERSION)
 
 settingsgen:
 	nrfutil settings generate --family NRF52 --application $(OUTPUT_DIRECTORY)/pixljs.hex --application-version $(APP_VERSION) --bootloader-version 1 --bl-settings-version 1 $(OUTPUT_DIRECTORY)/settings.hex
@@ -622,3 +744,24 @@ ota:
 
 full: settingsgen
 	mergehex --merge $(OUTPUT_DIRECTORY)/settings.hex $(OUTPUT_DIRECTORY)/bootloader.hex $(SDK_ROOT)/components/softdevice/s112/hex/s112_nrf52_7.2.0_softdevice.hex $(OUTPUT_DIRECTORY)/pixljs.hex --output $(OUTPUT_DIRECTORY)/pixljs_all.hex
+
+gen:
+	python3 ../scripts/amiibo_db_gen.py
+	python3 ../scripts/i18n_gen.py
+	python3 ../scripts/font_data_gen.py
+	python3 ../scripts/resource_gen.py
+
+flash_ocd: default
+	openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/nrf52.cfg -d2 -c init -c "reset init" -c halt -c "program $(OUTPUT_DIRECTORY)/pixljs.hex verify" -c "reset" -c exit
+
+flash_all_ocd: default
+	openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/nrf52.cfg -d2 -c init -c "reset init" -c halt -c "nrf51 mass_erase" -c "program $(SDK_ROOT)/components/softdevice/s112/hex/s112_nrf52_7.2.0_softdevice.hex verify" -c "program $(OUTPUT_DIRECTORY)/pixljs.hex verify" -c "reset" -c exit
+
+reset_ocd:
+	openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/nrf52.cfg -c "init" -c "reset" -c "exit"
+
+erase_ocd:
+	openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/nrf52.cfg -d2 -c init -c "reset init" -c halt -c "nrf51 mass_erase" -c "reset" -c exit
+
+rtt_ocd:
+	openocd -f openocd/rtt.cfg

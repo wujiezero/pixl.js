@@ -1,13 +1,14 @@
 #include "amiibo_scene.h"
 #include "app_amiibo.h"
 #include "cwalk.h"
+#include "mini_app_launcher.h"
+#include "mini_app_registry.h"
 #include "mui_list_view.h"
 #include "nrf_log.h"
 #include "vfs.h"
 #include "vfs_meta.h"
-#include "mini_app_registry.h"
-#include "mini_app_launcher.h"
 
+#include "i18n/language.h"
 #include "settings.h"
 
 #define ICON_FOLDER 0xe1d6
@@ -18,17 +19,16 @@
 
 #define FOLDER_LIST_PARENT 0xFFFF
 
-
-static int amiibo_scene_file_browser_list_item_cmp(const mui_list_item_t* p_item_a, const mui_list_item_t* p_item_b){
+static int amiibo_scene_file_browser_list_item_cmp(const mui_list_item_t *p_item_a, const mui_list_item_t *p_item_b) {
     if (p_item_a->icon == ICON_HOME) {
         return -1;
     }
     if (p_item_b->icon == ICON_HOME) {
         return 1;
     }
-    if(p_item_a->icon != p_item_b->icon){
+    if (p_item_a->icon != p_item_b->icon) {
         return p_item_a->icon - p_item_b->icon;
-    }else{
+    } else {
         return string_cmp(p_item_a->text, p_item_b->text);
     }
 }
@@ -40,9 +40,7 @@ static void amiibo_scene_file_browser_reload_folders(app_amiibo_t *app) {
 
     mui_list_view_clear_items(app->p_list_view);
     if (string_cmp_str(app->current_folder, "/") == 0) {
-        bool one_driver = (vfs_drive_enabled(VFS_DRIVE_INT) && !vfs_drive_enabled(VFS_DRIVE_EXT)) || (!vfs_drive_enabled(VFS_DRIVE_INT) && vfs_drive_enabled(VFS_DRIVE_EXT));
-        settings_data_t* p_settings = settings_get_data();
-        mui_list_view_add_item(app->p_list_view, (one_driver && p_settings->skip_driver_select) ? ICON_HOME : ICON_BACK, (one_driver && p_settings->skip_driver_select) ? ">>主菜单<<" : "..", (void *)(one_driver && p_settings->skip_driver_select) ? -1 : FOLDER_LIST_PARENT);
+        mui_list_view_add_item(app->p_list_view, ICON_HOME, _T(MAIN_MENU), (void *)FOLDER_LIST_PARENT);
     } else {
         mui_list_view_add_item(app->p_list_view, ICON_BACK, "..", (void *)FOLDER_LIST_PARENT);
     }
@@ -52,11 +50,11 @@ static void amiibo_scene_file_browser_reload_folders(app_amiibo_t *app) {
     int32_t res = p_vfs_driver->open_dir(string_get_cstr(app->current_folder), &dir);
     if (res == VFS_OK) {
         while ((res = p_vfs_driver->read_dir(&dir, &obj)) == VFS_OK) {
-            //hide file or dir if flagged with hidden
+            // hide file or dir if flagged with hidden
             vfs_meta_t meta;
             memset(&meta, 0, sizeof(vfs_meta_t));
             vfs_meta_decode(obj.meta, sizeof(obj.meta), &meta);
-            if(meta.has_flags && (meta.flags && VFS_OBJ_FLAG_HIDDEN)){
+            if (meta.has_flags && (meta.flags & VFS_OBJ_FLAG_HIDDEN)) {
                 continue;
             }
             uint16_t icon = obj.type == VFS_TYPE_DIR ? ICON_FOLDER : ICON_FILE;
@@ -64,12 +62,11 @@ static void amiibo_scene_file_browser_reload_folders(app_amiibo_t *app) {
         }
         p_vfs_driver->close_dir(&dir);
     } else {
-        mui_list_view_add_item(app->p_list_view, ICON_ERROR, "打开文件夹失败", (void *)-1);
+        mui_list_view_add_item(app->p_list_view, ICON_ERROR, getLangString(_L_OPEN_FOLDER_FAILED), (void *)-1);
     }
 
     mui_list_view_sort(app->p_list_view, amiibo_scene_file_browser_list_item_cmp);
-
-
+    mui_view_dispatcher_switch_to_view(app->p_view_dispatcher, AMIIBO_VIEW_ID_LIST);
 }
 
 static void amiibo_scene_file_browser_on_selected(mui_list_view_event_t event, mui_list_view_t *p_list_view,
@@ -82,7 +79,7 @@ static void amiibo_scene_file_browser_on_selected(mui_list_view_event_t event, m
     if (event == MUI_LIST_VIEW_EVENT_SELECTED) {
         if (idx == FOLDER_LIST_PARENT) {
             if (string_cmp_str(app->current_folder, "/") == 0) {
-                mui_scene_dispatcher_next_scene(app->p_scene_dispatcher, AMIIBO_SCENE_STORAGE_LIST);
+                mini_app_launcher_kill(mini_app_launcher(), MINI_APP_ID_AMIIBO);
             } else {
                 struct cwk_segment segment;
                 const char *folder_cstr = string_get_cstr(app->current_folder);
@@ -103,19 +100,12 @@ static void amiibo_scene_file_browser_on_selected(mui_list_view_event_t event, m
             } else if (p_item->icon == ICON_HOME) {
                 mini_app_launcher_kill(mini_app_launcher(), MINI_APP_ID_AMIIBO);
             } else {
-                // TODO AMIIBO test ..
-
-                // read tag
                 app->reload_amiibo_files = true;
                 mui_scene_dispatcher_next_scene(app->p_scene_dispatcher, AMIIBO_SCENE_AMIIBO_DETAIL);
             }
         }
     } else {
-        if (p_item->icon == ICON_HOME) {
-            mui_scene_dispatcher_next_scene(app->p_scene_dispatcher, AMIIBO_SCENE_STORAGE_LIST_MENU);
-        } else {
-            mui_scene_dispatcher_next_scene(app->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER_MENU);
-        }
+        mui_scene_dispatcher_next_scene(app->p_scene_dispatcher, AMIIBO_SCENE_FILE_BROWSER_MENU);
     }
 }
 
@@ -125,13 +115,11 @@ void amiibo_scene_file_browser_on_enter(void *user_data) {
     mui_list_view_set_selected_cb(app->p_list_view, amiibo_scene_file_browser_on_selected);
     mui_list_view_set_user_data(app->p_list_view, app);
 
-
     amiibo_scene_file_browser_reload_folders(app);
 
     mui_list_view_set_focus(app->p_list_view, app->current_focus_index);
 
     NRF_LOG_INFO("%X", app);
-    mui_view_dispatcher_switch_to_view(app->p_view_dispatcher, AMIIBO_VIEW_ID_LIST);
 }
 
 void amiibo_scene_file_browser_on_exit(void *user_data) {

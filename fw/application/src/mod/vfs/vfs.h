@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "boards.h"
+
 // Virtual Object Storage
 
 #define VFS_MAX_FOLDER_SIZE 32
@@ -89,8 +91,7 @@ typedef struct {
     int32_t (*close_file)(vfs_file_t *fd);
     int32_t (*read_file)(vfs_file_t *fd, void *buff, size_t buff_size);
     int32_t (*write_file)(vfs_file_t *fd, void *buff, size_t buff_size);
-    int32_t (*update_file_meta)(const char* file, void* meta, size_t meta_size);
-
+    int32_t (*update_file_meta)(const char *file, void *meta, size_t meta_size);
 
     /**short opearation*/
     int32_t (*write_file_data)(const char *file, void *buff, size_t buff_size);
@@ -103,7 +104,7 @@ typedef struct {
 
 bool vfs_drive_enabled(vfs_drive_t drive);
 vfs_driver_t *vfs_get_driver(vfs_drive_t drive);
-vfs_driver_t* vfs_get_default_driver();
+vfs_driver_t *vfs_get_default_driver();
 vfs_drive_t vfs_get_default_drive();
 
 #endif

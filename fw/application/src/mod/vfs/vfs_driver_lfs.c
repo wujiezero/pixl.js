@@ -1,4 +1,8 @@
-#include "vfs_driver_lfs.h"
+
+#include "boards.h"
+
+#ifdef VFS_LFS_ENABLE
+#include "vfs_driver_fs.h"
 
 #include "nrf_log.h"
 
@@ -240,7 +244,7 @@ int32_t vfs_lfs_read_dir_internal(vfs_dir_t *fd, vfs_obj_t *obj) {
 
 int32_t vfs_lfs_read_dir(vfs_dir_t *fd, vfs_obj_t *obj) {
     int32_t err;
-    //skip . and .. directory
+    // skip . and .. directory
     while ((err = vfs_lfs_read_dir_internal(fd, obj)) == VFS_OK) {
         if (strcmp(obj->name, ".") != 0 && strcmp(obj->name, "..") != 0) {
             return err;
@@ -390,29 +394,30 @@ int32_t vfs_lfs_remove_file(const char *file) {
 }
 
 // TODO
-const vfs_driver_t vfs_driver_lfs = {.mount = vfs_lfs_mount,
-                                     .umount = vfs_lfs_umount,
-                                     .format = vfs_lfs_format,
-                                     .mounted = vfs_lfs_mounted,
-                                     .stat = vfs_lfs_stat,
+const vfs_driver_t vfs_driver_fs = {.mount = vfs_lfs_mount,
+                                    .umount = vfs_lfs_umount,
+                                    .format = vfs_lfs_format,
+                                    .mounted = vfs_lfs_mounted,
+                                    .stat = vfs_lfs_stat,
 
-                                     .stat_file = vfs_lfs_stat_file,
+                                    .stat_file = vfs_lfs_stat_file,
 
-                                     .open_dir = vfs_lfs_open_dir,
-                                     .read_dir = vfs_lfs_read_dir,
-                                     .close_dir = vfs_lfs_close_dir,
-                                     .create_dir = vfs_lfs_create_dir,
-                                     .remove_dir = vfs_lfs_remove_dir,
-                                     .rename_dir = vfs_lfs_rename_dir,
+                                    .open_dir = vfs_lfs_open_dir,
+                                    .read_dir = vfs_lfs_read_dir,
+                                    .close_dir = vfs_lfs_close_dir,
+                                    .create_dir = vfs_lfs_create_dir,
+                                    .remove_dir = vfs_lfs_remove_dir,
+                                    .rename_dir = vfs_lfs_rename_dir,
 
-                                     .open_file = vfs_lfs_open_file,
-                                     .close_file = vfs_lfs_close_file,
-                                     .read_file = vfs_lfs_read_file,
-                                     .write_file = vfs_lfs_write_file,
-                                     .update_file_meta = vfs_lfs_update_file_meta,
+                                    .open_file = vfs_lfs_open_file,
+                                    .close_file = vfs_lfs_close_file,
+                                    .read_file = vfs_lfs_read_file,
+                                    .write_file = vfs_lfs_write_file,
+                                    .update_file_meta = vfs_lfs_update_file_meta,
 
-                                     .write_file_data = vfs_lfs_write_file_data,
-                                     .read_file_data = vfs_lfs_read_file_data,
+                                    .write_file_data = vfs_lfs_write_file_data,
+                                    .read_file_data = vfs_lfs_read_file_data,
 
-                                     .rename_file = vfs_lfs_rename_file,
-                                     .remove_file = vfs_lfs_remove_file};
+                                    .rename_file = vfs_lfs_rename_file,
+                                    .remove_file = vfs_lfs_remove_file};
+#endif
